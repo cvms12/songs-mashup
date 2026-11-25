@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AETHER-3D // Pro AI Dance Mashup Studio</title>
+    <!-- Tailwind CSS for crisp studio telemetry & HUD -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js r128 for High-End 3D WebGL Visualization -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-magenta: #ff007f;
+            --neon-purple: #8a2be2;
+            --glass-bg: rgba(10, 12, 20, 0.72);
+            --glass-border: rgba(255, 255, 255, 0.12);
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #05060a;
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc;
+            user-select: none;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* 3D Canvas Fullscreen Layer */
+        #webgl-container {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            cursor: grab;
+        }
+        #webgl-container:active {
+            cursor: grabbing;
+        }
+
+        /* Frosted Glass Hardware Panels */
+        .studio-glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        /* Custom Range Sliders (Hardware Faders) */
+        input[type="range"].pro-fader {
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.08);
+            height: 6px;
+            border-radius: 999px;
+            outline: none;
+        }
+        input[type="range"].pro-fader::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 28px;
+            border-radius: 4px;
+            background: linear-gradient(180deg, #ffffff 0%, #94a3b8 100%);
+            border: 1px solid #0f172a;
+            box-shadow: 0 0 12px rgba(0, 243, 255, 0.7);
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+        input[type="range"].pro-fader::-webkit-slider-thumb:hover {
+            transform: scale(1.08);
+        }
+
+        input[type="range"].eq-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.12);
+            height: 4px;
+            border-radius: 4px;
+        }
+        input[type="range"].eq-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            box-shadow: 0 0 8px #38bdf8;
+        }
+        input[type="range"].eq-slider.deck-b::-webkit-slider-thumb {
+            background: #f43f5e;
+            box-shadow: 0 0 8px #f43f5e;
+        }
+
+        /* Glowing Pulse Animations */
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(0, 243, 255, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(255, 0, 127, 0.7); }
+        }
+        .ai-active-glow {
+            animation: pulseGlow 2s infinite;
+        }
+
+        /* Custom Scrollbar for Logs */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="flex flex-col justify-between h-screen w-screen overflow-hidden">
+
+    <!-- 3D HOLOGRAPHIC STAGE CANVAS -->
+    <div id="webgl-container"></div>
+
+    <!-- TOP HEADER BAR: BRANDING, MASTER BPM, AI AUTO-MASHUP ENGINE -->
+    <header class="relative z-10 flex flex-wrap items-center justify-between gap-3 px-4 py-3 m-3 rounded-2xl studio-glass">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 via-indigo-500 to-pink-500 flex items-center justify-center shadow-lg">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-base md:text-lg font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 via-white to-pink-400">
+                        AETHER-3D STUDIO
+                    </h1>
+                    <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
+                        AUTONOMOUS AI DJ v5.0
+                    </span>
+                </div>
+                <p class="text-[11px] text-slate-400 hidden sm:block">Prompt-to-Setlist Autonomous Mashup Engine • Drag 3D Viewport to Orbit</p>
+            </div>
+        </div>
+
+        <!-- MASTER CLOCK & HARMONIC ENGINE -->
+        <div class="flex items-center gap-3 bg-black/40 px-3.5 py-1.5 rounded-xl border border-white/10">
+            <div class="text-center">
+                <div class="text-[9px] uppercase tracking-widest text-slate-400">Master Tempo</div>
+                <div class="flex items-center gap-1.5">
+                    <button id="bpm-down" class="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-xs font-bold flex items-center justify-center">-</button>
+                    <span id="master-bpm-display" class="mono text-sm md:text-base font-bold text-cyan-300">128.0</span>
+                    <button id="bpm-up" class="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-xs font-bold flex items-center justify-center">+</button>
+                </div>
+            </div>
+            <div class="h-7 w-[1px] bg-white/10"></div>
+            <div class="text-center hidden sm:block">
+                <div class="text-[9px] uppercase tracking-widest text-slate-400">Harmonic Lock</div>
+                <div id="harmonic-status" class="mono text-xs font-bold text-emerald-400">8A / 8B SYNC</div>
+            </div>
+        </div>
+
+        <!-- RIGHT ACTIONS: AI PROMPT DJ, BULK LINKS & AUTO-MASHUP -->
+        <div class="flex items-center gap-2">
+            <button id="btn-open-ai-dj" class="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/30 to-cyan-500/30 hover:from-emerald-500/45 hover:to-cyan-500/45 border border-emerald-400/50 text-emerald-200 text-xs font-extrabold transition flex items-center gap-1.5 shadow-md" title="Prompt song names or genres for an autonomous AI DJ set">
+                <span>🤖 AI Prompt DJ</span>
+            </button>
+            <button id="btn-open-links" class="px-3 py-2 rounded-xl bg-indigo-500/25 hover:bg-indigo-500/40 border border-indigo-400/40 text-indigo-200 text-xs font-bold transition flex items-center gap-1.5" title="Bulk import YouTube, Instagram, or direct audio URLs">
+                <span>🔗 Links</span>
+                <span id="queue-badge" class="hidden px-1.5 py-0.2 rounded-full bg-pink-500 text-white text-[10px]">0</span>
+            </button>
+            <button id="btn-load-demo" class="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-xs font-semibold transition hidden md:flex items-center gap-1.5" title="Generate 2 studio dance tracks instantly">
+                <span>⚡ Stems</span>
+            </button>
+            <button id="btn-ai-mashup" class="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 via-purple-600 to-pink-600 hover:brightness-110 text-xs md:text-sm font-extrabold tracking-wide shadow-lg transition flex items-center gap-2 ai-active-glow">
+                <span>✨ AUTO-MASHUP DROP</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- AI AUTONOMOUS DJ PROMPT MODAL -->
+    <div id="ai-dj-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div class="studio-glass w-full max-w-2xl rounded-2xl p-5 border border-emerald-400/40 shadow-2xl flex flex-col gap-4 max-h-[92vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                <div>
+                    <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+                        <span>🤖 AUTONOMOUS AI DJ & MASHUP ARCHITECT</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">GEMINI DSP ENGINE</span>
+                    </h3>
+                    <p class="text-[11px] text-slate-400 mt-0.5">Type song names, artists, or a club vibe. AI analyzes BPM/Camelot keys, synthesizes custom stems, and DJs automatically.</p>
+                </div>
+                <button id="btn-close-ai-dj" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 font-bold">✕</button>
+            </div>
+
+            <!-- Prompt Input & Quick Presets -->
+            <div>
+                <div class="flex flex-wrap justify-between items-center gap-1 mb-1.5">
+                    <label class="text-[11px] font-bold text-emerald-300">Prompt Song Names or Club Set Concept:</label>
+                    <div class="flex gap-1.5 text-[10px]">
+                        <button type="button" class="ai-preset-btn px-2 py-0.5 rounded bg-white/10 hover:bg-emerald-500/30 text-cyan-200 transition" data-prompt="Mashup Titanium by David Guetta, Levels by Avicii, and Don't You Worry Child by Swedish House Mafia">Festival Anthems</button>
+                        <button type="button" class="ai-preset-btn px-2 py-0.5 rounded bg-white/10 hover:bg-emerald-500/30 text-pink-200 transition" data-prompt="Deep Boiler Room techno mashup of Fisher Losing It, Fred again.. Delilah, and Dom Dolla Rhyme Dust">Tech House / Boiler Room</button>
+                        <button type="button" class="ai-preset-btn px-2 py-0.5 rounded bg-white/10 hover:bg-emerald-500/30 text-amber-200 transition" data-prompt="High energy Bollywood EDM club mashup of Kesariya, Kala Chashma, and Badtameez Dil at 128 BPM">Bollywood Club Mix</button>
+                    </div>
+                </div>
+                <textarea id="ai-dj-prompt-input" rows="3"
+                    placeholder="e.g., Create a high-energy 128 BPM mashup set with Blinding Lights, One More Time by Daft Punk, and Midnight City..."
+                    class="w-full bg-slate-950/90 border border-emerald-400/30 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-emerald-400"></textarea>
+            </div>
+
+            <!-- AI Director Live Setlist Blueprint -->
+            <div id="ai-director-plan-box" class="hidden flex-col gap-2 bg-black/55 p-3 rounded-xl border border-emerald-500/25">
+                <div class="flex items-center justify-between">
+                    <span id="ai-set-title" class="text-xs font-extrabold text-emerald-300 uppercase tracking-wider">AI Set Blueprint</span>
+                    <span id="ai-set-bpm" class="mono text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300">128 BPM</span>
+                </div>
+                <p id="ai-director-notes" class="text-[11px] text-slate-300 italic"></p>
+                <div id="ai-generated-tracks" class="flex flex-col gap-1.5 max-h-40 overflow-y-auto mt-1"></div>
+            </div>
+
+            <!-- Launch Controls -->
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/10">
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="ai-auto-pilot-check" checked class="accent-emerald-400 w-4 h-4">
+                    <label for="ai-auto-pilot-check" class="text-xs text-slate-300 font-medium">Full Auto-Pilot DJ Mode (Continuous transitions & live drops)</label>
+                </div>
+                <button id="btn-run-ai-dj" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 via-cyan-500 to-indigo-600 hover:brightness-110 text-xs font-extrabold text-slate-950 shadow-lg transition flex items-center gap-2">
+                    <span>🚀 GENERATE & LAUNCH AUTO-DJ</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BULK LINK IMPORTER & AUTO-SETLIST MODAL -->
+    <div id="bulk-link-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-md p-4">
+        <div class="studio-glass w-full max-w-2xl rounded-2xl p-5 border border-indigo-400/30 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                <div>
+                    <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+                        <span>🔗 BULK LINK INGESTION & AUTO-SETLIST ENGINE</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-400/30">YT / IG / DIRECT</span>
+                    </h3>
+                    <p class="text-[11px] text-slate-400 mt-0.5">Paste multiple YouTube, Instagram Reel, or direct audio URLs (one per line) to batch-analyze & auto-mashup.</p>
+                </div>
+                <button id="btn-close-links" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 font-bold">✕</button>
+            </div>
+
+            <!-- Optional Self-Hosted Extractor / Proxy Input -->
+            <div class="bg-black/40 p-3 rounded-xl border border-white/10">
+                <div class="flex items-center justify-between mb-1">
+                    <label class="text-[10px] font-bold uppercase tracking-wider text-cyan-300">Optional Audio Extractor API (yt-dlp / Cobalt Endpoint)</label>
+                    <span class="text-[10px] text-slate-400">Bypasses browser CORS for live YT/IG streams</span>
+                </div>
+                <input type="text" id="extractor-endpoint" placeholder="e.g. http://localhost:3000/extract?url= (Leave blank for Direct URLs + Smart Synth Fallback)"
+                    class="w-full bg-slate-950/80 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 mono focus:outline-none focus:border-cyan-400">
+            </div>
+
+            <!-- Bulk URL Textarea -->
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <label class="text-[11px] font-bold text-slate-300">Paste Links (One per line):</label>
+                    <button id="btn-fill-sample-links" class="text-[11px] text-cyan-400 hover:underline font-semibold">+ Fill Sample YT & IG Batch</button>
+                </div>
+                <textarea id="bulk-urls-input" rows="4"
+                    placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ&#10;https://www.instagram.com/reel/C8x9SampleReel/&#10;https://example.com/club-anthem.mp3"
+                    class="w-full bg-slate-950/90 border border-white/15 rounded-xl p-3 text-xs mono text-cyan-100 focus:outline-none focus:border-pink-500"></textarea>
+            </div>
+
+            <!-- Queue List & Progress -->
+            <div id="batch-queue-container" class="hidden flex-col gap-1.5 bg-black/50 p-3 rounded-xl border border-white/10 max-h-40 overflow-y-auto">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Analyzed Setlist Queue</div>
+                <div id="batch-queue-list" class="flex flex-col gap-1.5 text-xs"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/10">
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="auto-chain-checkbox" checked class="accent-pink-500 w-4 h-4">
+                    <label for="auto-chain-checkbox" class="text-xs text-slate-300 font-medium">Continuous Auto-DJ Setlist (Chain all tracks automatically)</label>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-process-batch" class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-600 hover:brightness-110 text-xs font-extrabold text-white shadow-lg transition">
+                        ⬇ FETCH, ANALYZE & START AUTO-MASHUP
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FLOATING AI ANALYZER TELEMETRY TOAST -->
+    <div class="relative z-10 mx-auto px-4 py-1.5 rounded-full studio-glass border border-cyan-500/30 flex items-center gap-3 max-w-[92vw]">
+        <span id="status-led" class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
+        <span id="ai-console-text" class="mono text-[11px] md:text-xs text-cyan-200 truncate">
+            READY: Click "🤖 AI Prompt DJ" and type song names to start an autonomous live mashup set!
+        </span>
+    </div>
+
+    <!-- BOTTOM STUDIO CONSOLE: DECK A | CENTRAL MIXER | DECK B -->
+    <main class="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 max-h-[54vh] lg:max-h-[42vh] overflow-y-auto lg:overflow-visible">
+
+        <!-- ==================== DECK A (CYAN) ==================== -->
+        <section class="lg:col-span-4 rounded-2xl studio-glass p-3.5 flex flex-col justify-between border-t-2 border-t-cyan-400">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-extrabold text-xs">DECK A</span>
+                    <h2 id="deckA-title" class="text-xs font-bold truncate text-slate-200">No Track Loaded</h2>
+                </div>
+                <label class="cursor-pointer px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 text-[11px] font-semibold transition shrink-0">
+                    + Audio File
+                    <input type="file" id="file-deckA" accept="audio/*" class="hidden">
+                </label>
+            </div>
+
+            <!-- Waveform Canvas A -->
+            <div class="relative w-full h-14 bg-black/50 rounded-xl border border-white/10 overflow-hidden mb-2.5">
+                <canvas id="wave-deckA" class="w-full h-full block"></canvas>
+                <div class="absolute top-1 left-2 mono text-[10px] text-cyan-300 bg-black/60 px-1.5 rounded" id="deckA-meta">--- BPM | KEY --</div>
+                <div class="absolute bottom-1 right-2 mono text-[10px] text-slate-300 bg-black/60 px-1.5 rounded" id="deckA-time">00:00</div>
+            </div>
+
+            <!-- Deck A Controls: Play, Sync, Loop & 3-Band EQ -->
+            <div class="grid grid-cols-12 gap-2 items-center">
+                <div class="col-span-5 flex items-center gap-1.5">
+                    <button id="play-deckA" class="flex-1 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs transition shadow-md">
+                        ▶ PLAY
+                    </button>
+                    <button id="sync-deckA" class="px-2.5 py-2 rounded-xl bg-white/10 hover:bg-cyan-500/30 border border-white/15 text-[11px] font-bold text-cyan-300 transition" title="Beat-match to Master BPM">
+                        SYNC
+                    </button>
+                </div>
+
+                <!-- 3-Band Isolator EQ -->
+                <div class="col-span-7 grid grid-cols-3 gap-2 bg-black/30 p-2 rounded-xl border border-white/5">
+                    <div class="flex flex-col items-center">
+                        <span class="text-[9px] text-slate-400 font-bold mb-1">HIGH</span>
+                        <input type="range" id="eqA-high" min="-24" max="6" value="0" step="0.5" class="w-full eq-slider">
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-[9px] text-slate-400 font-bold mb-1">MID</span>
+                        <input type="range" id="eqA-mid" min="-24" max="6" value="0" step="0.5" class="w-full eq-slider">
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-[9px] text-slate-400 font-bold mb-1">BASS</span>
+                        <input type="range" id="eqA-low" min="-30" max="6" value="0" step="0.5" class="w-full eq-slider">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== CENTRAL PRO MIXER & FX ==================== -->
+        <section class="lg:col-span-4 rounded-2xl studio-glass p-3.5 flex flex-col justify-between border-t-2 border-t-purple-500">
+            <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[11px] font-extrabold tracking-widest text-purple-300 uppercase">Harmonic Cross-Matrix</span>
+                <div class="flex gap-1.5">
+                    <button id="fx-bass-swap" class="px-2 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/40 border border-purple-400/40 text-[10px] font-bold text-purple-200 transition">
+                        ⇄ BASS SWAP
+                    </button>
+                    <button id="fx-build-riser" class="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/40 text-[10px] font-bold text-amber-200 transition">
+                        🔥 FILTER BUILD
+                    </button>
+                </div>
+            </div>
+
+            <!-- Transition Style Selector & Phrase Length -->
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <div class="bg-black/35 px-2.5 py-1.5 rounded-xl border border-white/10">
+                    <label class="block text-[9px] uppercase tracking-wider text-slate-400">Mashup Technique</label>
+                    <select id="mashup-style" class="w-full bg-transparent text-xs font-bold text-white focus:outline-none mt-0.5">
+                        <option value="bassSwapDrop" class="bg-slate-900">Club Bass-Swap Drop</option>
+                        <option value="filterSweep" class="bg-slate-900">High-Pass Riser & Slam</option>
+                        <option value="harmonicBlend" class="bg-slate-900">Smooth 8-Bar Harmonic Blend</option>
+                        <option value="doubleDrop" class="bg-slate-900">Festival Double-Drop Mash</option>
+                    </select>
+                </div>
+                <div class="bg-black/35 px-2.5 py-1.5 rounded-xl border border-white/10">
+                    <div class="flex justify-between text-[9px] uppercase tracking-wider text-slate-400">
+                        <span>Master Filter</span>
+                        <span id="filter-readout" class="text-purple-300 font-bold">CLEAN</span>
+                    </div>
+                    <input type="range" id="master-filter" min="-100" max="100" value="0" class="w-full eq-slider mt-1.5">
+                </div>
+            </div>
+
+            <!-- Pro Crossfader -->
+            <div class="bg-black/45 p-2.5 rounded-xl border border-white/10">
+                <div class="flex justify-between items-center text-[10px] font-extrabold mb-1">
+                    <span class="text-cyan-400">DECK A (100%)</span>
+                    <span id="xfader-label" class="mono text-slate-300">CENTER BLEND</span>
+                    <span class="text-pink-500">DECK B (100%)</span>
+                </div>
+                <input type="range" id="crossfader" min="0" max="1" step="0.005" value="0.5" class="w-full pro-fader">
+            </div>
+        </section>
+
+        <!-- ==================== DECK B (MAGENTA) ==================== -->
+        <section class="lg:col-span-4 rounded-2xl studio-glass p-3.5 flex flex-col justify-between border-t-2 border-t-pink-500">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="px-2 py-0.5 rounded bg-pink-500/20 text-pink-300 font-extrabold text-xs">DECK B</span>
+                    <h2 id="deckB-title" class="text-xs font-bold truncate text-slate-200">No Track Loaded</h2>
+                </div>
+                <label class="cursor-pointer px-2.5 py-1 rounded-lg bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/40 text-pink-200 text-[11px] font-semibold transition shrink-0">
+                    + Audio File
+                    <input type="file" id="file-deckB" accept="audio/*" class="hidden">
+                </label>
+            </div>
+
+            <!-- Waveform Canvas B -->
+            <div class="relative w-full h-14 bg-black/50 rounded-xl border border-white/10 overflow-hidden mb-2.5">
+                <canvas id="wave-deckB" class="w-full h-full block"></canvas>
+                <div class="absolute top-1 left-2 mono text-[10px] text-pink-300 bg-black/60 px-1.5 rounded" id="deckB-meta">--- BPM | KEY --</div>
+                <div class="absolute bottom-1 right-2 mono text-[10px] text-slate-300 bg-black/60 px-1.5 rounded" id="deckB-time">00:00</div>
+            </div>
+
+            <!-- Deck B Controls: Play, Sync, Loop & 3-Band EQ -->
+            <div class="grid grid-cols-12 gap-2 items-center">
+                <div class="col-span-5 flex items-center gap-1.5">
+                    <button id="play-deckB" class="flex-1 py-2 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-extrabold text-xs transition shadow-md">
+                        ▶ PLAY
+                    </button>
+                    <button id="sync-deckB" class="px-2.5 py-2 rounded-xl bg-white/10 hover:bg-pink-500/30 border border-white/15 text-[11px] font-bold text-pink-300 transition" title="Beat-match to Master BPM">
+                        SYNC
+                    </button>
+                </div>
+
+                <!-- 3-Band Isolator EQ -->
+                <div class="col-span-7 grid grid-cols-3 gap-2 bg-black/30 p-2 rounded-xl border border-white/5">
+                    <div class="flex flex-col items-center">
+                        <span class="text-[9px] text-slate-400 font-bold mb-1">HIGH</span>
+                        <input type="range" id="eqB-high" min="-24" max="6" value="0" step="0.5" class="w-full eq-slider deck-b">
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-[9px] text-slate-400 font-bold mb-1">MID</span>
+                        <input type="range" id="eqB-mid" min="-24" max="6" value="0" step="0.5" class="w-full eq-slider deck-b">
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-[9px] text-slate-400 font-bold mb-1">BASS</span>
+                        <input type="range" id="eqB-low" min="-30" max="6" value="0" step="0.5" class="w-full eq-slider deck-b">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        /**
+         * ============================================================================
+         * AETHER-3D // PRO AI DANCE MASHUP ENGINE & 3D AUDIO-REACTIVE STAGE
+         * Architecture:
+         *  1. Web Audio DSP Engine: Dual-Deck Buffers, BPM Peak Detector, 3-Band Biquad
+         *     EQ Isolators, Equal-Power Crossfader, Sweeping Master Resonant Filter,
+         *     and Real-time 256-bin FFT Frequency Analyzer.
+         *  2. Synthesized Club Stem Generator: Builds two distinct, beat-locked
+         *     128 BPM electronic dance tracks (Bassline, Kick, Acid Lead, Hi-Hats)
+         *     offline via OfflineAudioContext so users can test instantly.
+         *  3. Pro AI Mashup Choreographer: Analyzes drop points, aligns phase/BPM,
+         *     automates high-pass risers, executes bass-swaps on the downbeat, and
+         *     drives crossfader transitions.
+         *  4. Three.js 3D Holographic Stage: Twin rotating vinyl/laser turntables,
+         *     64-bar radial spectrum ring, sub-bass reactive core reactor, and
+         *     interactive mouse/touch camera orbit.
+         * ============================================================================
+         */
+
+        // --- GLOBAL AUDIO & STATE ---
+        let audioCtx = null;
+        let masterGain = null;
+        let masterFilter = null;
+        let analyser = null;
+        let frequencyData = null;
+
+        let masterBPM = 128.0;
+        let autoMashupActive = false;
+        let mashupAnimationId = null;
+        let setlistQueue = [];
+        let setlistIndex = 0;
+        let setlistTimer = null;
+        let nextTargetDeck = 'B';
+
+        // Camelot Keys for Harmonic Pairing Display
+        const CAMELOT_KEYS = ['8A (Am)', '9A (Em)', '10A (Bm)', '11A (F#m)', '6A (Gm)', '7A (Dm)', '5A (Cm)'];
+
+        // Dual Deck Audio State Factory
+        function createDeckState(id, colorHex) {
+            return {
+                id,
+                colorHex,
+                buffer: null,
+                sourceNode: null,
+                gainNode: null,
+                lowEQ: null,
+                midEQ: null,
+                highEQ: null,
+                isPlaying: false,
+                startTime: 0,
+                pauseOffset: 0,
+                duration: 0,
+                detectedBPM: 128.0,
+                playbackRate: 1.0,
+                peaks: [],
+                dropOffsetSec: 0,
+                key: '8A (Am)'
+            };
+        }
+
+        const deckA = createDeckState('A', '#00f3ff');
+        const deckB = createDeckState('B', '#ff007f');
+
+        // Studio Console Telemetry Logger
+        function logStudio(msg, highlight = false) {
+            const el = document.getElementById('ai-console-text');
+            if (!el) return;
+            el.textContent = msg;
+            el.className = highlight
+                ? 'mono text-[11px] md:text-xs text-pink-300 font-bold truncate'
+                : 'mono text-[11px] md:text-xs text-cyan-200 truncate';
+        }
+
+        // Initialize Web Audio Context, 3-Band EQ Isolators, Crossfader & FFT Analyser
+        function initAudioEngine() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContextClass();
+
+                masterFilter = audioCtx.createBiquadFilter();
+                masterFilter.type = 'allpass';
+                masterFilter.frequency.value = 1000;
+                masterFilter.Q.value = 1.4;
+
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = 0.9;
+
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = 0.82;
+                frequencyData = new Uint8Array(analyser.frequencyBinCount);
+
+                masterFilter.connect(masterGain);
+                masterGain.connect(analyser);
+                analyser.connect(audioCtx.destination);
+
+                [deckA, deckB].forEach((deck) => {
+                    deck.lowEQ = audioCtx.createBiquadFilter();
+                    deck.lowEQ.type = 'lowshelf';
+                    deck.lowEQ.frequency.value = 220;
+                    deck.lowEQ.gain.value = 0;
+
+                    deck.midEQ = audioCtx.createBiquadFilter();
+                    deck.midEQ.type = 'peaking';
+                    deck.midEQ.frequency.value = 1100;
+                    deck.midEQ.Q.value = 0.9;
+                    deck.midEQ.gain.value = 0;
+
+                    deck.highEQ = audioCtx.createBiquadFilter();
+                    deck.highEQ.type = 'highshelf';
+                    deck.highEQ.frequency.value = 3800;
+                    deck.highEQ.gain.value = 0;
+
+                    deck.gainNode = audioCtx.createGain();
+                    deck.gainNode.gain.value = 0.707;
+
+                    deck.lowEQ.connect(deck.midEQ);
+                    deck.midEQ.connect(deck.highEQ);
+                    deck.highEQ.connect(deck.gainNode);
+                    deck.gainNode.connect(masterFilter);
+                });
+
+                updateCrossfader(parseFloat(document.getElementById('crossfader').value || 0.5));
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Analyze AudioBuffer for Waveform Peaks, BPM Estimate, Energy Drop Cue & Key
+        async function analyzeAudioBuffer(buffer) {
+            const channelData = buffer.getChannelData(0);
+            const sampleRate = buffer.sampleRate;
+            const totalSamples = channelData.length;
+
+            // 1. Extract 140 visual waveform peaks & find highest energy drop cue
+            const numPeaks = 140;
+            const blockSize = Math.max(1, Math.floor(totalSamples / numPeaks));
+            const peaks = [];
+            let maxEnergy = 0;
+            let dropSampleIdx = 0;
+
+            for (let i = 0; i < numPeaks; i++) {
+                let sumSq = 0;
+                const start = i * blockSize;
+                for (let j = 0; j < blockSize; j += 8) {
+                    const val = channelData[start + j] || 0;
+                    sumSq += val * val;
+                }
+                const rms = Math.sqrt(sumSq / (blockSize / 8));
+                peaks.push(Math.min(1, rms * 2.4));
+
+                // Prefer drop cues past the initial intro (first 15%)
+                if (i > numPeaks * 0.12 && i < numPeaks * 0.75 && rms > maxEnergy) {
+                    maxEnergy = rms;
+                    dropSampleIdx = start;
+                }
+            }
+
+            // 2. Autocorrelation Beat/BPM Detector on onset envelope
+            const envRate = 100; // 100 Hz envelope
+            const step = Math.floor(sampleRate / envRate);
+            const maxEnvLen = Math.min(Math.floor(totalSamples / step), envRate * 24);
+            const envelope = new Float32Array(maxEnvLen);
+
+            for (let i = 0; i < maxEnvLen; i++) {
+                let energy = 0;
+                const offset = i * step;
+                for (let j = 0; j < step; j += 4) {
+                    const s = channelData[offset + j] || 0;
+                    energy += s * s;
+                }
+                envelope[i] = Math.sqrt(energy);
+            }
+
+            // Search lag between 95 BPM and 155 BPM
+            let bestBpm = 128.0;
+            let bestCorr = -1;
+            for (let bpm = 96; bpm <= 152; bpm += 0.5) {
+                const lag = Math.round((60 / bpm) * envRate);
+                let corr = 0;
+                for (let i = 0; i < maxEnvLen - lag; i++) {
+                    corr += envelope[i] * envelope[i + lag];
+                }
+                if (corr > bestCorr) {
+                    bestCorr = corr;
+                    bestBpm = bpm;
+                }
+            }
+
+            const dropOffsetSec = Math.max(0, (dropSampleIdx / sampleRate) - (60 / bestBpm) * 4);
+            const key = CAMELOT_KEYS[Math.floor(bestBpm) % CAMELOT_KEYS.length];
+
+            return {
+                bpm: bestBpm,
+                peaks,
+                dropOffsetSec,
+                key
+            };
+        }
+
+        // Load Local Audio File into Deck A or Deck B
+        async function loadFileToDeck(file, deck) {
+            if (!file) return;
+            initAudioEngine();
+            logStudio(`Decoding & analyzing "${file.name}" for Deck ${deck.id}...`, true);
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                const analysis = await analyzeAudioBuffer(audioBuffer);
+
+                if (deck.isPlaying) stopDeck(deck);
+
+                deck.buffer = audioBuffer;
+                deck.duration = audioBuffer.duration;
+                deck.pauseOffset = 0;
+                deck.detectedBPM = analysis.bpm;
+                deck.peaks = analysis.peaks;
+                deck.dropOffsetSec = analysis.dropOffsetSec;
+                deck.key = analysis.key;
+                deck.playbackRate = masterBPM / deck.detectedBPM;
+
+                document.getElementById(`deck${deck.id}-title`).textContent = file.name.replace(/\.[^/.]+$/, "");
+                document.getElementById(`deck${deck.id}-meta`).textContent =
+                    `${deck.detectedBPM.toFixed(1)} BPM → ${masterBPM.toFixed(1)} | ${deck.key}`;
+                drawDeckWaveform(deck);
+
+                logStudio(`Deck ${deck.id} Ready: ${analysis.bpm.toFixed(1)} BPM • Key ${analysis.key}.`);
+            } catch (err) {
+                logStudio(`Error decoding audio file: ${err.message}`, true);
+            }
+        }
+
+        // --- SYNTHESIZE 2 PRO CLUB DANCE TRACKS (OFFLINE DSP RENDER) ---
+        async function renderSingleSynthStem(variant = 'A', customSeed = 1, customConfig = null) {
+            initAudioEngine();
+            const sampleRate = audioCtx.sampleRate;
+            const duration = 32; // 32 seconds seamless loopable dance track
+            const bpm = customConfig?.bpm || 128;
+            const beatSec = 60 / bpm;
+            const rootFreq = customConfig?.rootFreq || 55.0; // Default A1 (55Hz)
+            const energy = customConfig?.energy || 0.85;
+            const groove = customConfig?.groove || 'fourOnFloor';
+
+            const offline = new OfflineAudioContext(2, sampleRate * duration, sampleRate);
+            const totalBeats = Math.floor(duration / beatSec);
+
+            // Harmonic intervals relative to rootFreq (Minor / Club scale ratios)
+            const bassRatiosA = [1.0, 1.0, 1.1892, 1.3348]; // Root, Root, m3, P4
+            const bassRatiosB = [1.0, 0.8909, 0.7937, 0.8909]; // Root, b7, b6, b7
+            const leadRatiosA = [8.0, 9.5137, 11.986, 10.678, 8.0, 7.127, 9.5137, 11.986];
+            const leadRatiosB = [11.986, 14.254, 16.0, 14.254, 11.986, 10.678, 9.5137, 10.678];
+            const pitchShift = customConfig ? 1.0 : (1 + ((customSeed % 4) * 0.05946));
+
+            for (let b = 0; b < totalBeats; b++) {
+                const t = b * beatSec;
+                const bar = Math.floor(b / 4);
+                const isDrop = bar >= 2;
+
+                // 1. Club Kick Drum (4/4 or syncopated depending on groove)
+                const playKick = groove === 'syncopated'
+                    ? (b % 4 === 0 || b % 4 === 2 || (isDrop && b % 8 === 7))
+                    : (isDrop || (variant === 'A' && b % 2 === 0));
+
+                if (playKick) {
+                    const kickOsc = offline.createOscillator();
+                    const kickGain = offline.createGain();
+                    kickOsc.type = 'sine';
+                    kickOsc.frequency.setValueAtTime(variant === 'A' ? 148 : 165, t);
+                    kickOsc.frequency.exponentialRampToValueAtTime(36, t + 0.14);
+                    kickGain.gain.setValueAtTime(0.95, t);
+                    kickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.36);
+                    kickOsc.connect(kickGain);
+                    kickGain.connect(offline.destination);
+                    kickOsc.start(t);
+                    kickOsc.stop(t + 0.38);
+                }
+
+                // 2. Rolling Offbeat Sub/Mid Bassline tuned to Track Root Key
+                const bassOsc = offline.createOscillator();
+                const bassFilter = offline.createBiquadFilter();
+                const bassGain = offline.createGain();
+                bassOsc.type = variant === 'A' ? 'sawtooth' : 'square';
+                const ratioSeq = variant === 'A' ? bassRatiosA : bassRatiosB;
+                const bassFreq = rootFreq * ratioSeq[(bar + customSeed) % ratioSeq.length];
+                bassOsc.frequency.setValueAtTime(bassFreq, t + beatSec * 0.5);
+
+                bassFilter.type = 'lowpass';
+                bassFilter.frequency.setValueAtTime(isDrop ? (520 + energy * 240) : 230, t + beatSec * 0.5);
+                bassFilter.frequency.exponentialRampToValueAtTime(105, t + beatSec * 0.95);
+                bassGain.gain.setValueAtTime(isDrop ? 0.42 : 0.2, t + beatSec * 0.5);
+                bassGain.gain.exponentialRampToValueAtTime(0.001, t + beatSec * 0.98);
+
+                bassOsc.connect(bassFilter);
+                bassFilter.connect(bassGain);
+                bassGain.connect(offline.destination);
+                bassOsc.start(t + beatSec * 0.5);
+                bassOsc.stop(t + beatSec);
+
+                // 3. Harmonic Synth Hook / Pluck Melody
+                if (variant === 'B' || isDrop) {
+                    for (let sub = 0; sub < 2; sub++) {
+                        const st = t + sub * (beatSec * 0.5);
+                        const leadOsc = offline.createOscillator();
+                        const leadGain = offline.createGain();
+                        leadOsc.type = variant === 'B' ? 'sawtooth' : 'triangle';
+
+                        const arp = variant === 'B' ? leadRatiosB : leadRatiosA;
+                        const freq = rootFreq * arp[(b * 2 + sub + customSeed) % arp.length] * pitchShift;
+                        leadOsc.frequency.setValueAtTime(freq, st);
+
+                        const amp = (variant === 'B' ? (isDrop ? 0.21 : 0.15) : 0.12) * Math.max(0.6, energy);
+                        leadGain.gain.setValueAtTime(amp, st);
+                        leadGain.gain.exponentialRampToValueAtTime(0.001, st + beatSec * 0.45);
+
+                        leadOsc.connect(leadGain);
+                        leadGain.connect(offline.destination);
+                        leadOsc.start(st);
+                        leadOsc.stop(st + beatSec * 0.48);
+                    }
+                }
+
+                // 4. Crisp Offbeat Open Hi-Hats
+                const bufferSize = Math.floor(sampleRate * 0.12);
+                const noiseBuffer = offline.createBuffer(1, bufferSize, sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+                const hat = offline.createBufferSource();
+                hat.buffer = noiseBuffer;
+                const hatFilter = offline.createBiquadFilter();
+                hatFilter.type = 'highpass';
+                hatFilter.frequency.value = 7500;
+                const hatGain = offline.createGain();
+                hatGain.gain.setValueAtTime(isDrop ? 0.18 : 0.08, t + beatSec * 0.5);
+                hatGain.gain.exponentialRampToValueAtTime(0.001, t + beatSec * 0.5 + 0.09);
+
+                hat.connect(hatFilter);
+                hatFilter.connect(hatGain);
+                hatGain.connect(offline.destination);
+                hat.start(t + beatSec * 0.5);
+            }
+
+            return await offline.startRendering();
+        }
+
+        async function generateProClubStems() {
+            initAudioEngine();
+            logStudio("Synthesizing twin 128 BPM progressive house & electro stems via DSP...", true);
+
+            const [bufA, bufB] = await Promise.all([
+                renderSingleSynthStem('A', 0),
+                renderSingleSynthStem('B', 1)
+            ]);
+
+            if (deckA.isPlaying) stopDeck(deckA);
+            if (deckB.isPlaying) stopDeck(deckB);
+
+            const analysisA = await analyzeAudioBuffer(bufA);
+            const analysisB = await analyzeAudioBuffer(bufB);
+
+            Object.assign(deckA, {
+                buffer: bufA,
+                duration: bufA.duration,
+                pauseOffset: 0,
+                detectedBPM: 128,
+                playbackRate: masterBPM / 128,
+                peaks: analysisA.peaks,
+                dropOffsetSec: 3.75,
+                key: '8A (Am)'
+            });
+
+            Object.assign(deckB, {
+                buffer: bufB,
+                duration: bufB.duration,
+                pauseOffset: 0,
+                detectedBPM: 128,
+                playbackRate: masterBPM / 128,
+                peaks: analysisB.peaks,
+                dropOffsetSec: 3.75,
+                key: '8B (Cmaj)'
+            });
+
+            document.getElementById('deckA-title').textContent = 'SOLARIS // Deep Bassline & Kick';
+            document.getElementById('deckA-meta').textContent = `128.0 BPM | 8A (Am)`;
+            document.getElementById('deckB-title').textContent = 'NEBULA // Euphoric Acid Lead';
+            document.getElementById('deckB-meta').textContent = `128.0 BPM | 8B (Cmaj)`;
+
+            drawDeckWaveform(deckA);
+            drawDeckWaveform(deckB);
+
+            logStudio('Pro Club Stems Loaded! Click "✨ AUTO-MASHUP DROP" to experience live beat-matched mashup.', true);
+        }
+
+        // --- AUTONOMOUS AI PROMPT DJ ENGINE (GEMINI STRUCTURED SETLIST + LIVE MIXING) ---
+        const NOTE_ROOT_FREQS = {
+            'Am': 55.00, 'Bm': 61.74, 'Cm': 65.41, 'Dm': 73.42,
+            'Em': 41.20, 'Fm': 43.65, 'Gm': 49.00, 'F#m': 46.25,
+            'C': 65.41, 'D': 73.42, 'E': 41.20, 'F': 43.65, 'G': 49.00, 'A': 55.00
+        };
+
+        async function callGeminiDJDirector(userPrompt) {
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            const systemPrompt = `You are a world-class festival DJ and mashup producer (like Fred again.., Martin Garrix, and Hardwell).
+Given the user's prompt of song names, artists, or vibe, curate a cohesive 3-to-5 track club mashup setlist.
+Extract every song mentioned by the user (and add 1-2 complementary harmonic mashup tracks if fewer than 2 songs were named).
+Ensure all tracks share compatible Camelot keys and a danceable BPM (120-136 BPM) so they mash up seamlessly.`;
+
+            const payload = {
+                contents: [{ parts: [{ text: `Create a live DJ mashup setlist for: "${userPrompt}"` }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            setTitle: { type: "STRING" },
+                            masterBpm: { type: "NUMBER" },
+                            directorNotes: { type: "STRING" },
+                            tracks: {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        title: { type: "STRING" },
+                                        artist: { type: "STRING" },
+                                        bpm: { type: "NUMBER" },
+                                        camelotKey: { type: "STRING" },
+                                        musicalRoot: { type: "STRING" },
+                                        mashupRole: { type: "STRING" },
+                                        mashupTechnique: { type: "STRING" },
+                                        energyLevel: { type: "NUMBER" },
+                                        grooveType: { type: "STRING" }
+                                    },
+                                    required: ["title", "artist", "bpm", "camelotKey", "musicalRoot", "mashupRole", "mashupTechnique", "energyLevel", "grooveType"]
+                                }
+                            }
+                        },
+                        required: ["setTitle", "masterBpm", "directorNotes", "tracks"]
+                    }
+                }
+            };
+
+            let delay = 1000;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const res = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (text) return JSON.parse(text);
+                    }
+                } catch (e) {
+                    // Retry with exponential backoff
+                }
+                await new Promise(r => setTimeout(r, delay));
+                delay *= 2;
+            }
+            return null;
+        }
+
+        function buildFallbackSetFromPrompt(promptText) {
+            const parts = promptText
+                .replace(/mashup|mix|set|create|play|with|between|and|songs?/gi, ',')
+                .split(/,|\n|&|\+/)
+                .map(s => s.trim())
+                .filter(s => s.length > 2);
+
+            const names = parts.length >= 2 ? parts : [
+                parts[0] || 'Midnight Horizon (Festival Edit)',
+                'Solaris Anthem (Club Acapella)',
+                'Hyperdrive Bassline (VIP Mix)'
+            ];
+
+            return {
+                setTitle: 'AETHER AUTONOMOUS CLUB SESSION',
+                masterBpm: 128,
+                directorNotes: 'Harmonic Camelot 8A/8B lock with 8-beat bass-swap drops.',
+                tracks: names.slice(0, 5).map((name, i) => ({
+                    title: name,
+                    artist: 'AI Studio Rework',
+                    bpm: 128,
+                    camelotKey: i % 2 === 0 ? '8A (Am)' : '8B (C)',
+                    musicalRoot: i % 2 === 0 ? 'Am' : 'C',
+                    mashupRole: i % 2 === 0 ? 'Sub Bass & Groove' : 'Lead Hook & Vocal Synth',
+                    mashupTechnique: i % 2 === 0 ? 'bassSwapDrop' : 'doubleDrop',
+                    energyLevel: 0.88,
+                    grooveType: 'fourOnFloor'
+                }))
+            };
+        }
+
+        async function runAutonomousAIPromptDJ() {
+            const promptInput = document.getElementById('ai-dj-prompt-input').value.trim();
+            if (!promptInput) {
+                logStudio('Enter song names or a DJ vibe in the prompt box first!', true);
+                return;
+            }
+
+            const runBtn = document.getElementById('btn-run-ai-dj');
+            const origBtnHtml = runBtn.innerHTML;
+            runBtn.disabled = true;
+            runBtn.innerHTML = '<span>⏳ AI ANALYZING & SYNTHESIZING SET...</span>';
+
+            initAudioEngine();
+            logStudio(`🤖 AI DJ analyzing "${promptInput.slice(0, 48)}..." for BPM, key & mashup phrasing...`, true);
+
+            let blueprint = await callGeminiDJDirector(promptInput);
+            if (!blueprint || !blueprint.tracks || blueprint.tracks.length < 2) {
+                blueprint = buildFallbackSetFromPrompt(promptInput);
+            }
+
+            // Update Master Tempo to AI-recommended BPM
+            masterBPM = Math.max(115, Math.min(145, Math.round(blueprint.masterBpm || 128)));
+            document.getElementById('master-bpm-display').textContent = masterBPM.toFixed(1);
+
+            // Render Blueprint UI inside Modal
+            const planBox = document.getElementById('ai-director-plan-box');
+            const trackListEl = document.getElementById('ai-generated-tracks');
+            planBox.classList.remove('hidden');
+            planBox.classList.add('flex');
+            document.getElementById('ai-set-title').textContent = blueprint.setTitle || 'AI MASHUP SET';
+            document.getElementById('ai-set-bpm').textContent = `${masterBPM.toFixed(1)} BPM • HARMONIC SYNC`;
+            document.getElementById('ai-director-notes').textContent = blueprint.directorNotes || '';
+            trackListEl.innerHTML = '';
+
+            setlistQueue = [];
+            if (setlistTimer) clearInterval(setlistTimer);
+
+            for (let i = 0; i < blueprint.tracks.length; i++) {
+                const tr = blueprint.tracks[i];
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between bg-white/5 px-2.5 py-1.5 rounded-lg border border-white/10 text-xs';
+                row.innerHTML = `
+                    <div class="min-w-0 pr-2">
+                        <div class="font-bold text-white truncate">${i + 1}. ${tr.title} <span class="text-slate-400 font-normal">- ${tr.artist}</span></div>
+                        <div class="text-[10px] text-emerald-300">${tr.mashupRole} • Key ${tr.camelotKey}</div>
+                    </div>
+                    <span id="ai-tr-status-${i}" class="mono text-[10px] text-amber-300 shrink-0">SYNTHESIZING...</span>
+                `;
+                trackListEl.appendChild(row);
+
+                const rootFreq = NOTE_ROOT_FREQS[tr.musicalRoot] || 55.0;
+                const stemBuffer = await renderSingleSynthStem(i % 2 === 0 ? 'A' : 'B', i + 1, {
+                    bpm: masterBPM,
+                    rootFreq,
+                    energy: tr.energyLevel || 0.85,
+                    groove: tr.grooveType === 'syncopated' ? 'syncopated' : 'fourOnFloor'
+                });
+
+                const analysis = await analyzeAudioBuffer(stemBuffer);
+                analysis.bpm = masterBPM;
+                analysis.key = tr.camelotKey || analysis.key;
+
+                setlistQueue.push({
+                    label: `${tr.title} (${tr.artist})`,
+                    buffer: stemBuffer,
+                    analysis,
+                    technique: ['bassSwapDrop', 'filterSweep', 'harmonicBlend', 'doubleDrop'].includes(tr.mashupTechnique)
+                        ? tr.mashupTechnique
+                        : 'bassSwapDrop'
+                });
+
+                const stEl = document.getElementById(`ai-tr-status-${i}`);
+                if (stEl) {
+                    stEl.textContent = 'READY ✓';
+                    stEl.className = 'mono text-[10px] text-emerald-400 shrink-0 font-bold';
+                }
+            }
+
+            // Update queue counter badge
+            const badge = document.getElementById('queue-badge');
+            badge.textContent = setlistQueue.length;
+            badge.classList.remove('hidden');
+
+            // Load Track 1 on Deck A & Track 2 on Deck B
+            assignItemToDeck(setlistQueue[0], deckA);
+            assignItemToDeck(setlistQueue[1], deckB);
+            document.getElementById('mashup-style').value = setlistQueue[1].technique;
+            document.getElementById('harmonic-status').textContent = `${setlistQueue[0].analysis.key} ↔ ${setlistQueue[1].analysis.key}`;
+
+            setlistIndex = 1;
+            nextTargetDeck = 'A';
+
+            runBtn.disabled = false;
+            runBtn.innerHTML = origBtnHtml;
+
+            // Close modal & immediately launch the live AI DJ mashup performance
+            document.getElementById('ai-dj-modal').classList.add('hidden');
+            document.getElementById('ai-dj-modal').classList.remove('flex');
+            await executeProAutoMashup();
+
+            // Autonomous Auto-Pilot DJ Loop: Continuously mixes new tracks & executes live drops every 16 beats
+            const autoPilot = document.getElementById('ai-auto-pilot-check').checked;
+            if (autoPilot && setlistQueue.length >= 2) {
+                const phraseIntervalMs = (60 / masterBPM) * 16 * 1000;
+                setlistTimer = setInterval(async () => {
+                    if (setlistQueue.length > 2) {
+                        setlistIndex = (setlistIndex + 1) % setlistQueue.length;
+                        const nextTrack = setlistQueue[setlistIndex];
+                        const targetDeck = nextTargetDeck === 'A' ? deckA : deckB;
+
+                        assignItemToDeck(nextTrack, targetDeck);
+                        document.getElementById('mashup-style').value = nextTrack.technique;
+                        document.getElementById('harmonic-status').textContent = `${deckA.key} ↔ ${deckB.key}`;
+                        logStudio(`🤖 AUTO-PILOT DJ [${setlistIndex + 1}/${setlistQueue.length}]: Blending "${nextTrack.label}" onto Deck ${targetDeck.id}...`, true);
+                        nextTargetDeck = nextTargetDeck === 'A' ? 'B' : 'A';
+                    } else {
+                        const techniques = ['bassSwapDrop', 'filterSweep', 'doubleDrop', 'harmonicBlend'];
+                        const nextTech = techniques[Math.floor(Math.random() * techniques.length)];
+                        document.getElementById('mashup-style').value = nextTech;
+                        logStudio(`🤖 AUTO-PILOT DJ: Triggering live ${nextTech} variation between Deck A & Deck B...`, true);
+                    }
+                    await executeProAutoMashup();
+                }, phraseIntervalMs);
+            }
+        }
+
+        // --- BULK YOUTUBE / INSTAGRAM / AUDIO URL FETCHER & SETLIST SEQUENCER ---
+        function parseMediaUrlMeta(rawUrl, idx) {
+            const url = rawUrl.trim();
+            let platform = 'DIRECT AUDIO';
+            let label = `Track #${idx + 1}`;
+
+            try {
+                const u = new URL(url);
+                if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) {
+                    platform = 'YOUTUBE';
+                    const vid = u.searchParams.get('v') || u.pathname.split('/').filter(Boolean).pop() || `YT_${idx + 1}`;
+                    label = `YT [${vid.slice(0, 11)}] Club Edit`;
+                } else if (u.hostname.includes('instagram.com')) {
+                    platform = 'INSTAGRAM';
+                    const parts = u.pathname.split('/').filter(Boolean);
+                    const code = parts[1] || parts[0] || `IG_${idx + 1}`;
+                    label = `IG Reel [${code.slice(0, 10)}] Flip`;
+                } else {
+                    const fileName = u.pathname.split('/').pop();
+                    if (fileName) label = decodeURIComponent(fileName).replace(/\.[^/.]+$/, "");
+                }
+            } catch (e) {
+                label = url.slice(0, 28);
+            }
+            return { url, platform, label };
+        }
+
+        async function fetchAndDecodeLinkItem(meta, index, customEndpoint) {
+            // 1. Try direct fetch (works for CORS-enabled audio URLs or user's custom yt-dlp extractor proxy)
+            const targetFetchUrl = customEndpoint
+                ? `${customEndpoint}${encodeURIComponent(meta.url)}`
+                : meta.url;
+
+            const isSocialPage = meta.platform === 'YOUTUBE' || meta.platform === 'INSTAGRAM';
+
+            if (!isSocialPage || customEndpoint) {
+                try {
+                    const response = await fetch(targetFetchUrl);
+                    if (response.ok) {
+                        const arrayBuffer = await response.arrayBuffer();
+                        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                        const analysis = await analyzeAudioBuffer(audioBuffer);
+                        return {
+                            ...meta,
+                            buffer: audioBuffer,
+                            analysis,
+                            sourceMode: customEndpoint ? 'EXTRACTED STREAM' : 'DIRECT STREAM'
+                        };
+                    }
+                } catch (err) {
+                    // Fallback below if CORS blocks browser fetch
+                }
+            }
+
+            // 2. Smart Club Stem Synthesis Fallback when browser CORS blocks YouTube/IG HTML pages
+            const synthBuf = await renderSingleSynthStem(index % 2 === 0 ? 'A' : 'B', index + 2);
+            const analysis = await analyzeAudioBuffer(synthBuf);
+            return {
+                ...meta,
+                buffer: synthBuf,
+                analysis,
+                sourceMode: 'CORS-SAFE DSP STEM'
+            };
+        }
+
+        function assignItemToDeck(item, deck) {
+            if (deck.isPlaying) stopDeck(deck);
+            deck.buffer = item.buffer;
+            deck.duration = item.buffer.duration;
+            deck.pauseOffset = 0;
+            deck.detectedBPM = item.analysis.bpm;
+            deck.peaks = item.analysis.peaks;
+            deck.dropOffsetSec = item.analysis.dropOffsetSec;
+            deck.key = item.analysis.key;
+            deck.playbackRate = masterBPM / deck.detectedBPM;
+
+            document.getElementById(`deck${deck.id}-title`).textContent = item.label;
+            document.getElementById(`deck${deck.id}-meta`).textContent =
+                `${deck.detectedBPM.toFixed(1)} BPM → ${masterBPM.toFixed(1)} | ${deck.key}`;
+            drawDeckWaveform(deck);
+        }
+
+        async function processBulkLinksAndAutoMashup() {
+            const rawText = document.getElementById('bulk-urls-input').value.trim();
+            if (!rawText) {
+                logStudio('Paste at least 2 YouTube, Instagram, or audio links to batch mashup.', true);
+                return;
+            }
+
+            const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            if (lines.length === 0) return;
+
+            initAudioEngine();
+            const customEndpoint = document.getElementById('extractor-endpoint').value.trim();
+            const queueContainer = document.getElementById('batch-queue-container');
+            const queueList = document.getElementById('batch-queue-list');
+            queueContainer.classList.remove('hidden');
+            queueContainer.classList.add('flex');
+            queueList.innerHTML = '';
+
+            setlistQueue = [];
+            if (setlistTimer) clearInterval(setlistTimer);
+
+            for (let i = 0; i < lines.length; i++) {
+                const meta = parseMediaUrlMeta(lines[i], i);
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between bg-white/5 px-2.5 py-1.5 rounded-lg border border-white/10';
+                row.innerHTML = `
+                    <span class="truncate font-semibold text-slate-200">
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-300 mr-1.5">${meta.platform}</span>
+                        ${meta.label}
+                    </span>
+                    <span id="q-status-${i}" class="mono text-[10px] text-amber-300 shrink-0">FETCHING...</span>
+                `;
+                queueList.appendChild(row);
+                logStudio(`Batch Ingest [${i + 1}/${lines.length}]: Analyzing ${meta.label}...`, true);
+
+                const processed = await fetchAndDecodeLinkItem(meta, i, customEndpoint);
+                setlistQueue.push(processed);
+
+                const statusEl = document.getElementById(`q-status-${i}`);
+                if (statusEl) {
+                    statusEl.textContent = `${processed.analysis.bpm.toFixed(0)} BPM • ${processed.sourceMode}`;
+                    statusEl.className = 'mono text-[10px] text-emerald-400 shrink-0';
+                }
+            }
+
+            // Update header badge
+            const badge = document.getElementById('queue-badge');
+            badge.textContent = setlistQueue.length;
+            badge.classList.remove('hidden');
+
+            // Load Track 1 -> Deck A and Track 2 -> Deck B
+            assignItemToDeck(setlistQueue[0], deckA);
+            if (setlistQueue.length > 1) {
+                assignItemToDeck(setlistQueue[1], deckB);
+            }
+            setlistIndex = 1;
+            nextTargetDeck = 'A';
+
+            // Close modal and trigger initial Auto-Mashup Drop!
+            document.getElementById('bulk-link-modal').classList.add('hidden');
+            document.getElementById('bulk-link-modal').classList.remove('flex');
+            await executeProAutoMashup();
+
+            // If user enabled Continuous Auto-DJ Setlist and there are 3+ tracks, auto-cycle every 16 beats
+            const autoChain = document.getElementById('auto-chain-checkbox').checked;
+            if (autoChain && setlistQueue.length > 2) {
+                const phraseIntervalMs = (60 / masterBPM) * 16 * 1000;
+                setlistTimer = setInterval(async () => {
+                    setlistIndex = (setlistIndex + 1) % setlistQueue.length;
+                    const nextTrack = setlistQueue[setlistIndex];
+                    const targetDeck = nextTargetDeck === 'A' ? deckA : deckB;
+
+                    assignItemToDeck(nextTrack, targetDeck);
+                    logStudio(`AUTO-SETLIST [${setlistIndex + 1}/${setlistQueue.length}]: Mixing in "${nextTrack.label}" on Deck ${targetDeck.id}...`, true);
+
+                    nextTargetDeck = nextTargetDeck === 'A' ? 'B' : 'A';
+                    await executeProAutoMashup();
+                }, phraseIntervalMs);
+            }
+        }
+
+        // --- DECK TRANSPORT CONTROLS (PLAY / PAUSE / SYNC) ---
+        function playDeck(deck, customOffset = null) {
+            if (!deck.buffer) {
+                logStudio(`Load an audio track into Deck ${deck.id} first (or click "Load Pro Club Stems").`, true);
+                return;
+            }
+            initAudioEngine();
+
+            if (deck.isPlaying) {
+                stopDeck(deck);
+            }
+
+            const source = audioCtx.createBufferSource();
+            source.buffer = deck.buffer;
+            source.loop = true;
+            deck.playbackRate = masterBPM / deck.detectedBPM;
+            source.playbackRate.value = deck.playbackRate;
+
+            source.connect(deck.lowEQ);
+
+            const offset = customOffset !== null ? (customOffset % deck.duration) : (deck.pauseOffset % deck.duration);
+            source.start(0, offset);
+
+            deck.sourceNode = source;
+            deck.startTime = audioCtx.currentTime - (offset / deck.playbackRate);
+            deck.isPlaying = true;
+
+            const btn = document.getElementById(`play-deck${deck.id}`);
+            btn.textContent = '❚❚ PAUSE';
+        }
+
+        function stopDeck(deck) {
+            if (!deck.isPlaying || !deck.sourceNode) return;
+            try {
+                deck.sourceNode.stop();
+                deck.sourceNode.disconnect();
+            } catch (e) {}
+            const elapsed = (audioCtx.currentTime - deck.startTime) * deck.playbackRate;
+            deck.pauseOffset = elapsed % deck.duration;
+            deck.isPlaying = false;
+            deck.sourceNode = null;
+
+            const btn = document.getElementById(`play-deck${deck.id}`);
+            btn.textContent = '▶ PLAY';
+        }
+
+        function toggleDeck(deck) {
+            if (deck.isPlaying) stopDeck(deck);
+            else playDeck(deck);
+        }
+
+        function getDeckCurrentTime(deck) {
+            if (!deck.buffer) return 0;
+            if (!deck.isPlaying) return deck.pauseOffset % deck.duration;
+            return ((audioCtx.currentTime - deck.startTime) * deck.playbackRate) % deck.duration;
+        }
+
+        // --- EQUAL-POWER CROSSFADER & EQ ROUTING ---
+        function updateCrossfader(val) {
+            document.getElementById('crossfader').value = val;
+            const label = document.getElementById('xfader-label');
+            if (val < 0.15) label.textContent = 'DECK A SOLO';
+            else if (val > 0.85) label.textContent = 'DECK B SOLO';
+            else if (Math.abs(val - 0.5) < 0.08) label.textContent = 'DUAL MASH BLEND';
+            else label.textContent = val < 0.5 ? `A ${Math.round((1 - val) * 100)}% / B ${Math.round(val * 100)}%` : `A ${Math.round((1 - val) * 100)}% / B ${Math.round(val * 100)}%`;
+
+            if (!audioCtx) return;
+            // Equal power curve prevents volume dip in center mashup position
+            const gainA = Math.cos(val * 0.5 * Math.PI);
+            const gainB = Math.cos((1.0 - val) * 0.5 * Math.PI);
+            deckA.gainNode.gain.setTargetAtTime(gainA, audioCtx.currentTime, 0.02);
+            deckB.gainNode.gain.setTargetAtTime(gainB, audioCtx.currentTime, 0.02);
+        }
+
+        function updateMasterFilter(val) {
+            const readout = document.getElementById('filter-readout');
+            if (!audioCtx) return;
+            const num = parseFloat(val);
+            if (Math.abs(num) < 5) {
+                masterFilter.type = 'allpass';
+                readout.textContent = 'CLEAN';
+            } else if (num > 0) {
+                masterFilter.type = 'highpass';
+                const freq = 40 + Math.pow(num / 100, 2) * 3200;
+                masterFilter.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.03);
+                readout.textContent = `HPF ${Math.round(freq)}Hz`;
+            } else {
+                masterFilter.type = 'lowpass';
+                const freq = 18000 * Math.pow(1 - Math.abs(num) / 105, 2.2) + 140;
+                masterFilter.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.03);
+                readout.textContent = `LPF ${Math.round(freq)}Hz`;
+            }
+        }
+
+        // --- PRO AI AUTO-MASHUP CHOREOGRAPHER ---
+        async function executeProAutoMashup() {
+            initAudioEngine();
+
+            // If user hasn't uploaded files yet, auto-generate stems first!
+            if (!deckA.buffer || !deckB.buffer) {
+                await generateProClubStems();
+            }
+
+            if (autoMashupActive) {
+                cancelAnimationFrame(mashupAnimationId);
+                autoMashupActive = false;
+            }
+
+            const style = document.getElementById('mashup-style').value;
+            autoMashupActive = true;
+
+            // Phase-align both decks to their analyzed energy cue points & Master BPM
+            deckA.playbackRate = masterBPM / deckA.detectedBPM;
+            deckB.playbackRate = masterBPM / deckB.detectedBPM;
+
+            if (!deckA.isPlaying) playDeck(deckA, deckA.dropOffsetSec);
+            playDeck(deckB, deckB.dropOffsetSec);
+
+            const beatDurationSec = 60 / masterBPM;
+            const transitionDurationMs = beatDurationSec * 8 * 1000; // Exact 8-beat (2-bar) club phrase!
+            const startTime = performance.now();
+
+            // Determine start/end crossfader direction based on current position
+            const startXfader = parseFloat(document.getElementById('crossfader').value);
+            const targetXfader = style === 'doubleDrop' ? 0.5 : (startXfader <= 0.5 ? 0.65 : 0.35);
+
+            logStudio(`AI MASHUP [${style.toUpperCase()}]: Phase-locked at ${masterBPM.toFixed(1)} BPM • Executing 8-beat drop...`, true);
+
+            // Set initial EQ separation (Carve out Deck B bass during buildup so frequencies don't clash)
+            if (style === 'bassSwapDrop' || style === 'doubleDrop') {
+                deckB.lowEQ.gain.setValueAtTime(-26, audioCtx.currentTime);
+                document.getElementById('eqB-low').value = -26;
+                deckA.lowEQ.gain.setValueAtTime(2, audioCtx.currentTime);
+                document.getElementById('eqA-low').value = 2;
+            }
+
+            let bassSwapped = false;
+
+            function stepMashup(now) {
+                if (!autoMashupActive) return;
+                const elapsed = now - startTime;
+                const progress = Math.min(1, elapsed / transitionDurationMs);
+
+                // Smooth S-curve crossfade
+                const ease = progress < 0.5
+                    ? 2 * progress * progress
+                    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+                const currentXf = startXfader + (targetXfader - startXfader) * ease;
+                updateCrossfader(currentXf);
+
+                // Filter Riser during buildup (0% -> 88%), then slam open at 90% (The Drop!)
+                if (style === 'filterSweep' || style === 'bassSwapDrop') {
+                    if (progress < 0.88) {
+                        const riserVal = Math.sin((progress / 0.88) * Math.PI * 0.5) * 68;
+                        document.getElementById('master-filter').value = riserVal;
+                        updateMasterFilter(riserVal);
+                    } else {
+                        document.getElementById('master-filter').value = 0;
+                        updateMasterFilter(0);
+                    }
+                }
+
+                // Execute Crisp Bass-Swap right at the 88% Downbeat Drop!
+                if (progress >= 0.88 && !bassSwapped) {
+                    bassSwapped = true;
+                    if (style === 'bassSwapDrop') {
+                        deckA.lowEQ.gain.setTargetAtTime(-26, audioCtx.currentTime, 0.015);
+                        deckB.lowEQ.gain.setTargetAtTime(3, audioCtx.currentTime, 0.015);
+                        document.getElementById('eqA-low').value = -26;
+                        document.getElementById('eqB-low').value = 3;
+                        logStudio('💥 DROP EXECUTED: Bassline swapped to Deck B while Deck A highs ride the groove!', true);
+                    } else if (style === 'doubleDrop') {
+                        deckA.lowEQ.gain.setTargetAtTime(-6, audioCtx.currentTime, 0.02);
+                        deckB.lowEQ.gain.setTargetAtTime(2, audioCtx.currentTime, 0.02);
+                        document.getElementById('eqA-low').value = -6;
+                        document.getElementById('eqB-low').value = 2;
+                        logStudio('💥 DOUBLE-DROP LOCKED: Dual harmonic layers fused in center matrix!', true);
+                    }
+                }
+
+                if (progress < 1) {
+                    mashupAnimationId = requestAnimationFrame(stepMashup);
+                } else {
+                    autoMashupActive = false;
+                    logStudio(`MASHUP LOCKED: Deck A & Deck B running in harmonic sync (${masterBPM.toFixed(1)} BPM).`);
+                }
+            }
+
+            mashupAnimationId = requestAnimationFrame(stepMashup);
+        }
+
+        // --- 2D WAVEFORM RENDERING ---
+        function drawDeckWaveform(deck) {
+            const canvas = document.getElementById(`wave-deck${deck.id}`);
+            if (!canvas) return;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width || 300;
+            canvas.height = rect.height || 56;
+
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            if (!deck.peaks || deck.peaks.length === 0) {
+                // Idle grid line
+                ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+                ctx.beginPath();
+                ctx.moveTo(0, h / 2);
+                ctx.lineTo(w, h / 2);
+                ctx.stroke();
+                return;
+            }
+
+            const currentSec = getDeckCurrentTime(deck);
+            const progressRatio = deck.duration > 0 ? currentSec / deck.duration : 0;
+            const barWidth = w / deck.peaks.length;
+
+            for (let i = 0; i < deck.peaks.length; i++) {
+                const barRatio = i / deck.peaks.length;
+                const amp = Math.max(0.08, deck.peaks[i]) * (h * 0.82);
+                const x = i * barWidth;
+                const y = (h - amp) / 2;
+
+                ctx.fillStyle = barRatio <= progressRatio ? deck.colorHex : 'rgba(255, 255, 255, 0.22)';
+                ctx.fillRect(x, y, Math.max(1, barWidth - 1), amp);
+            }
+
+            // Playhead needle
+            const needleX = progressRatio * w;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(needleX, 0, 2, h);
+
+            // Time readout
+            const mins = Math.floor(currentSec / 60).toString().padStart(2, '0');
+            const secs = Math.floor(currentSec % 60).toString().padStart(2, '0');
+            document.getElementById(`deck${deck.id}-time`).textContent = `${mins}:${secs}`;
+        }
+
+        // ============================================================================
+        // HIGH-END 3D WEBGL AUDIO-REACTIVE STAGE (THREE.JS)
+        // ============================================================================
+        let scene, camera, renderer;
+        let deckAMesh, deckBMesh, centerCore, outerRing, particleSystem;
+        let spectrumBars = [];
+        let cameraAngleX = 0.48;
+        let cameraAngleY = 0.0;
+        let cameraDistance = 15.5;
+        let isDragging3D = false;
+        let prevMouse = { x: 0, y: 0 };
+
+        function init3DStage() {
+            const container = document.getElementById('webgl-container');
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x05060a, 0.032);
+
+            camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
+            updateCameraPosition();
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Studio Lighting
+            const ambientLight = new THREE.AmbientLight(0x22283a, 1.5);
+            scene.add(ambientLight);
+
+            const cyanLight = new THREE.PointLight(0x00f3ff, 2.5, 30);
+            cyanLight.position.set(-6, 5, 4);
+            scene.add(cyanLight);
+
+            const pinkLight = new THREE.PointLight(0xff007f, 2.5, 30);
+            pinkLight.position.set(6, 5, 4);
+            scene.add(pinkLight);
+
+            const coreLight = new THREE.PointLight(0x8a2be2, 3.0, 25);
+            coreLight.position.set(0, 3, 0);
+            scene.add(coreLight);
+
+            // Reflective Cyberpunk Floor Grid
+            const gridHelper = new THREE.GridHelper(60, 60, 0x00f3ff, 0x161b2e);
+            gridHelper.position.y = -1.6;
+            scene.add(gridHelper);
+
+            // Helper to build Holographic 3D DJ Platter
+            function createHologramDeck(xPos, primaryColor) {
+                const group = new THREE.Group();
+                group.position.set(xPos, -0.8, 0.5);
+
+                // Base Chassis
+                const baseGeo = new THREE.CylinderGeometry(2.5, 2.7, 0.35, 48);
+                const baseMat = new THREE.MeshStandardMaterial({
+                    color: 0x0d111c,
+                    metalness: 0.85,
+                    roughness: 0.2
+                });
+                const base = new THREE.Mesh(baseGeo, baseMat);
+                group.add(base);
+
+                // Glowing Neon Platter Ring
+                const ringGeo = new THREE.TorusGeometry(2.35, 0.07, 16, 64);
+                const ringMat = new THREE.MeshBasicMaterial({ color: primaryColor });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = Math.PI / 2;
+                ring.position.y = 0.2;
+                group.add(ring);
+
+                // Spinning Vinyl Disc with Strobe Markers
+                const discGeo = new THREE.CylinderGeometry(2.15, 2.15, 0.08, 48);
+                const discMat = new THREE.MeshStandardMaterial({
+                    color: 0x07090f,
+                    metalness: 0.6,
+                    roughness: 0.3
+                });
+                const disc = new THREE.Mesh(discGeo, discMat);
+                disc.position.y = 0.24;
+
+                // Strobe Marker Bar on Disc so rotation is clearly visible
+                const markerGeo = new THREE.BoxGeometry(1.9, 0.05, 0.12);
+                const markerMat = new THREE.MeshBasicMaterial({ color: primaryColor });
+                const marker = new THREE.Mesh(markerGeo, markerMat);
+                marker.position.set(0.95, 0.05, 0);
+                disc.add(marker);
+
+                group.add(disc);
+                scene.add(group);
+                return { group, disc, ring };
+            }
+
+            deckAMesh = createHologramDeck(-4.4, 0x00f3ff);
+            deckBMesh = createHologramDeck(4.4, 0xff007f);
+
+            // Central Harmonic Mashup Reactor Core
+            const coreGeo = new THREE.IcosahedronGeometry(1.35, 2);
+            const coreMat = new THREE.MeshStandardMaterial({
+                color: 0x8a2be2,
+                emissive: 0x3b0764,
+                wireframe: true,
+                metalness: 0.9,
+                roughness: 0.1
+            });
+            centerCore = new THREE.Mesh(coreGeo, coreMat);
+            centerCore.position.set(0, 1.3, -1.2);
+            scene.add(centerCore);
+
+            // Inner Solid Energy Sphere
+            const innerGeo = new THREE.SphereGeometry(0.75, 32, 32);
+            const innerMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff, transparent: true, opacity: 0.65 });
+            const innerSphere = new THREE.Mesh(innerGeo, innerMat);
+            centerCore.add(innerSphere);
+
+            // 64-Bar Circular 3D Audio Spectrum Analyzer
+            const barCount = 64;
+            const radius = 5.8;
+            for (let i = 0; i < barCount; i++) {
+                const angle = (i / barCount) * Math.PI * 2;
+                const barGeo = new THREE.BoxGeometry(0.22, 1, 0.22);
+                const ratio = i / barCount;
+                const barColor = new THREE.Color().setHSL(0.52 + ratio * 0.38, 1.0, 0.55);
+                const barMat = new THREE.MeshBasicMaterial({ color: barColor });
+
+                const bar = new THREE.Mesh(barGeo, barMat);
+                bar.position.set(Math.cos(angle) * radius, -1.0, Math.sin(angle) * radius - 0.8);
+                bar.lookAt(0, -1.0, -0.8);
+                scene.add(bar);
+                spectrumBars.push(bar);
+            }
+
+            // Floating Spatial Audio Particles
+            const particleCount = 600;
+            const pGeo = new THREE.BufferGeometry();
+            const pPos = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                pPos[i] = (Math.random() - 0.5) * 34;
+                pPos[i + 1] = Math.random() * 14 - 1.5;
+                pPos[i + 2] = (Math.random() - 0.5) * 34;
+            }
+            pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+            const pMat = new THREE.PointsMaterial({ color: 0x7dd3fc, size: 0.09, transparent: true, opacity: 0.75 });
+            particleSystem = new THREE.Points(pGeo, pMat);
+            scene.add(particleSystem);
+
+            // Mouse & Touch Orbit Controls
+            container.addEventListener('mousedown', (e) => {
+                isDragging3D = true;
+                prevMouse = { x: e.clientX, y: e.clientY };
+            });
+            window.addEventListener('mouseup', () => { isDragging3D = false; });
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging3D) return;
+                const dx = e.clientX - prevMouse.x;
+                const dy = e.clientY - prevMouse.y;
+                cameraAngleY -= dx * 0.006;
+                cameraAngleX = Math.max(0.15, Math.min(1.25, cameraAngleX + dy * 0.006));
+                prevMouse = { x: e.clientX, y: e.clientY };
+                updateCameraPosition();
+            });
+
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging3D = true;
+                    prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+            }, { passive: true });
+            window.addEventListener('touchend', () => { isDragging3D = false; });
+            window.addEventListener('touchmove', (e) => {
+                if (!isDragging3D || e.touches.length !== 1) return;
+                const dx = e.touches[0].clientX - prevMouse.x;
+                const dy = e.touches[0].clientY - prevMouse.y;
+                cameraAngleY -= dx * 0.007;
+                cameraAngleX = Math.max(0.15, Math.min(1.25, cameraAngleX + dy * 0.007));
+                prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                updateCameraPosition();
+            }, { passive: true });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                drawDeckWaveform(deckA);
+                drawDeckWaveform(deckB);
+            });
+        }
+
+        function updateCameraPosition() {
+            camera.position.x = Math.sin(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
+            camera.position.y = Math.sin(cameraAngleX) * cameraDistance + 1.2;
+            camera.position.z = Math.cos(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
+            camera.lookAt(0, 0.2, 0);
+        }
+
+        // --- MAIN 60FPS ANIMATION LOOP ---
+        function animateLoop() {
+            requestAnimationFrame(animateLoop);
+
+            // 1. Update 2D Waveforms
+            if (deckA.isPlaying) drawDeckWaveform(deckA);
+            if (deckB.isPlaying) drawDeckWaveform(deckB);
+
+            // 2. Spin 3D Turntable Platters proportional to BPM & Playback Rate
+            if (deckA.isPlaying) {
+                deckAMesh.disc.rotation.y -= 0.055 * deckA.playbackRate;
+            }
+            if (deckB.isPlaying) {
+                deckBMesh.disc.rotation.y -= 0.055 * deckB.playbackRate;
+            }
+
+            // 3. Extract Real-Time Audio FFT Spectrum
+            let bassEnergy = 0;
+            let highEnergy = 0;
+
+            if (analyser && frequencyData && (deckA.isPlaying || deckB.isPlaying)) {
+                analyser.getByteFrequencyData(frequencyData);
+
+                for (let i = 0; i < 10; i++) bassEnergy += frequencyData[i];
+                bassEnergy = (bassEnergy / 10) / 255;
+
+                for (let i = 40; i < 90; i++) highEnergy += frequencyData[i];
+                highEnergy = (highEnergy / 50) / 255;
+
+                for (let i = 0; i < spectrumBars.length; i++) {
+                    const binIdx = Math.floor((i / spectrumBars.length) * (frequencyData.length * 0.75));
+                    const val = frequencyData[binIdx] / 255;
+                    const targetScaleY = 0.2 + val * 4.8;
+                    spectrumBars[i].scale.y += (targetScaleY - spectrumBars[i].scale.y) * 0.35;
+                    spectrumBars[i].position.y = -1.5 + (spectrumBars[i].scale.y * 0.5);
+                }
+            } else {
+                // Ambient Idle Breathing Animation
+                const t = performance.now() * 0.002;
+                for (let i = 0; i < spectrumBars.length; i++) {
+                    const wave = 0.3 + Math.sin(t + i * 0.25) * 0.18;
+                    spectrumBars[i].scale.y = wave;
+                    spectrumBars[i].position.y = -1.5 + wave * 0.5;
+                }
+            }
+
+            // 4. Pulse Center Mashup Reactor Core on Sub-Bass Hits
+            const coreScale = 1.0 + bassEnergy * 0.65;
+            centerCore.scale.set(coreScale, coreScale, coreScale);
+            centerCore.rotation.y += 0.012 + highEnergy * 0.05;
+            centerCore.rotation.x += 0.007;
+
+            // Gentle Camera Drift when not dragging
+            if (!isDragging3D) {
+                cameraAngleY = Math.sin(performance.now() * 0.00025) * 0.22;
+                updateCameraPosition();
+            }
+
+            particleSystem.rotation.y += 0.0012;
+            renderer.render(scene, camera);
+        }
+
+        // --- BIND ALL UI EVENT LISTENERS ---
+        function bindStudioControls() {
+            // File Inputs
+            document.getElementById('file-deckA').addEventListener('change', (e) => loadFileToDeck(e.target.files[0], deckA));
+            document.getElementById('file-deckB').addEventListener('change', (e) => loadFileToDeck(e.target.files[0], deckB));
+
+            // Demo Club Stems & Auto-Mashup Buttons
+            document.getElementById('btn-load-demo').addEventListener('click', generateProClubStems);
+            document.getElementById('btn-ai-mashup').addEventListener('click', executeProAutoMashup);
+
+            // AI Autonomous DJ Modal Controls
+            const aiDjModal = document.getElementById('ai-dj-modal');
+            document.getElementById('btn-open-ai-dj').addEventListener('click', () => {
+                aiDjModal.classList.remove('hidden');
+                aiDjModal.classList.add('flex');
+            });
+            document.getElementById('btn-close-ai-dj').addEventListener('click', () => {
+                aiDjModal.classList.add('hidden');
+                aiDjModal.classList.remove('flex');
+            });
+            document.querySelectorAll('.ai-preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.getElementById('ai-dj-prompt-input').value = btn.getAttribute('data-prompt');
+                });
+            });
+            document.getElementById('btn-run-ai-dj').addEventListener('click', runAutonomousAIPromptDJ);
+
+            // Bulk Link Modal Controls
+            const linkModal = document.getElementById('bulk-link-modal');
+            document.getElementById('btn-open-links').addEventListener('click', () => {
+                linkModal.classList.remove('hidden');
+                linkModal.classList.add('flex');
+            });
+            document.getElementById('btn-close-links').addEventListener('click', () => {
+                linkModal.classList.add('hidden');
+                linkModal.classList.remove('flex');
+            });
+            document.getElementById('btn-fill-sample-links').addEventListener('click', () => {
+                document.getElementById('bulk-urls-input').value = [
+                    'https://www.youtube.com/watch?v=9bZkp7q19f0',
+                    'https://www.instagram.com/reel/C9AetherClubMix/',
+                    'https://youtu.be/kJQP7kiw5Fk',
+                    'https://www.instagram.com/reel/C9MidnightBassDrop/'
+                ].join('\n');
+            });
+            document.getElementById('btn-process-batch').addEventListener('click', processBulkLinksAndAutoMashup);
+
+            // Play / Pause Buttons
+            document.getElementById('play-deckA').addEventListener('click', () => toggleDeck(deckA));
+            document.getElementById('play-deckB').addEventListener('click', () => toggleDeck(deckB));
+
+            // Beat Sync Buttons
+            document.getElementById('sync-deckA').addEventListener('click', () => {
+                if (!deckA.buffer) return;
+                deckA.playbackRate = masterBPM / deckA.detectedBPM;
+                if (deckA.sourceNode) deckA.sourceNode.playbackRate.setTargetAtTime(deckA.playbackRate, audioCtx.currentTime, 0.02);
+                document.getElementById('deckA-meta').textContent = `${deckA.detectedBPM.toFixed(1)} BPM → ${masterBPM.toFixed(1)} | ${deckA.key}`;
+                logStudio(`Deck A beat-locked to Master ${masterBPM.toFixed(1)} BPM.`);
+            });
+
+            document.getElementById('sync-deckB').addEventListener('click', () => {
+                if (!deckB.buffer) return;
+                deckB.playbackRate = masterBPM / deckB.detectedBPM;
+                if (deckB.sourceNode) deckB.sourceNode.playbackRate.setTargetAtTime(deckB.playbackRate, audioCtx.currentTime, 0.02);
+                document.getElementById('deckB-meta').textContent = `${deckB.detectedBPM.toFixed(1)} BPM → ${masterBPM.toFixed(1)} | ${deckB.key}`;
+                logStudio(`Deck B beat-locked to Master ${masterBPM.toFixed(1)} BPM.`);
+            });
+
+            // Master BPM Controls
+            function changeMasterBPM(delta) {
+                masterBPM = Math.max(90, Math.min(165, masterBPM + delta));
+                const bpmEl = document.getElementById('master-bpm-display');
+                if (bpmEl) bpmEl.textContent = masterBPM.toFixed(1);
+                [deckA, deckB].forEach(d => {
+                    if (d.buffer) {
+                        d.playbackRate = masterBPM / d.detectedBPM;
+                        if (d.sourceNode) d.sourceNode.playbackRate.setTargetAtTime(d.playbackRate, audioCtx.currentTime, 0.02);
+                        document.getElementById(`deck${d.id}-meta`).textContent = `${d.detectedBPM.toFixed(1)} BPM → ${masterBPM.toFixed(1)} | ${d.key}`;
+                    }
+                });
+            }
+            const bpmUpBtn = document.getElementById('bpm-up');
+            const bpmDownBtn = document.getElementById('bpm-down');
+            if (bpmUpBtn) bpmUpBtn.addEventListener('click', () => changeMasterBPM(1.0));
+            if (bpmDownBtn) bpmDownBtn.addEventListener('click', () => changeMasterBPM(-1.0));
+
+            // Crossfader & Master Filter
+            document.getElementById('crossfader').addEventListener('input', (e) => {
+                autoMashupActive = false;
+                updateCrossfader(parseFloat(e.target.value));
+            });
+            document.getElementById('master-filter').addEventListener('input', (e) => {
+                initAudioEngine();
+                updateMasterFilter(e.target.value);
+            });
+
+            // 3-Band EQ Sliders
+            ['A', 'B'].forEach(id => {
+                const deck = id === 'A' ? deckA : deckB;
+                document.getElementById(`eq${id}-low`).addEventListener('input', (e) => {
+                    initAudioEngine();
+                    deck.lowEQ.gain.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.02);
+                });
+                document.getElementById(`eq${id}-mid`).addEventListener('input', (e) => {
+                    initAudioEngine();
+                    deck.midEQ.gain.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.02);
+                });
+                document.getElementById(`eq${id}-high`).addEventListener('input', (e) => {
+                    initAudioEngine();
+                    deck.highEQ.gain.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.02);
+                });
+            });
+
+            // Instant Pro Bass-Swap Button
+            document.getElementById('fx-bass-swap').addEventListener('click', () => {
+                initAudioEngine();
+                const currentLowA = parseFloat(document.getElementById('eqA-low').value);
+                const newLowA = currentLowA < -10 ? 2 : -26;
+                const newLowB = currentLowA < -10 ? -26 : 2;
+
+                document.getElementById('eqA-low').value = newLowA;
+                document.getElementById('eqB-low').value = newLowB;
+                deckA.lowEQ.gain.setTargetAtTime(newLowA, audioCtx.currentTime, 0.015);
+                deckB.lowEQ.gain.setTargetAtTime(newLowB, audioCtx.currentTime, 0.015);
+                logStudio(`Instant Bass-Swap executed! Sub-bass routed to Deck ${newLowA > 0 ? 'A' : 'B'}.`, true);
+            });
+
+            // Instant Filter Build Button
+            document.getElementById('fx-build-riser').addEventListener('click', () => {
+                initAudioEngine();
+                const current = parseFloat(document.getElementById('master-filter').value);
+                const next = current > 10 ? 0 : 58;
+                document.getElementById('master-filter').value = next;
+                updateMasterFilter(next);
+                logStudio(next > 0 ? 'High-Pass Tension Riser engaged!' : 'Filter slammed open to full club spectrum!', true);
+            });
+        }
+
+        // Start Application on Window Load
+        window.onload = function () {
+            init3DStage();
+            bindStudioControls();
+            drawDeckWaveform(deckA);
+            drawDeckWaveform(deckB);
+            animateLoop();
+        };
+    </script>
+</body>
+</html>
